@@ -1,0 +1,116 @@
+body {
+    font-family: sans-serif;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    display: flex;
+}
+
+nav {
+    width: 200px;
+    background-color: #f4f4f4;
+    padding: 20px;
+    height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    border-right: 1px solid #ddd;
+}
+
+nav a {
+    display: block;
+    padding: 10px 15px;
+    text-decoration: none;
+    color: #333;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    transition: all 0.3s ease;
+}
+
+nav a.active {
+    background-color: #007bff;
+    color: white;
+}
+
+nav a:hover {
+    background-color: #e0e0e0;
+}
+
+main {
+    flex: 1;
+    margin-left: 200px;
+    padding: 40px;
+    background-color: #fff;
+}
+
+.tool-container {
+    display: none;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.tool-container.active {
+    display: block;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+h1 {
+    margin-top: 0;
+    color: #333;
+    margin-bottom: 30px;
+}
+
+textarea {
+    width: 100%;
+    height: 150px;
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+button {
+    padding: 12px 24px;
+    cursor: pointer;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+h2 {
+    margin-top: 30px;
+    color: #444;
+}
+
+pre#result, pre#pemResult, pre#sha256Result {
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin-top: 20px;
+    font-size: 14px;
+    line-height: 1.5;
+}
