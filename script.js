@@ -1,8 +1,16 @@
 // WASM 초기화 함수
 async function initWasm() {
     try {
+        // 보안 컨텍스트 확인
+        if (!window.isSecureContext) {
+            throw new Error('이 기능은 보안 컨텍스트(HTTPS)에서만 사용할 수 있습니다.');
+        }
+
         const go = new Go();
-        const result = await fetch('main.wasm');
+        const result = await fetch('./main.wasm');
+        if (!result.ok) {
+            throw new Error(`WASM 파일을 로드할 수 없습니다: ${result.status} ${result.statusText}`);
+        }
         const buffer = await result.arrayBuffer();
         const obj = await WebAssembly.instantiate(buffer, go.importObject);
         go.run(obj.instance);
@@ -11,9 +19,26 @@ async function initWasm() {
         console.log('pemToHexArray 함수 확인:', !!window.pemToHexArray);
         console.log('hexArrayToPem 함수 확인:', !!window.hexArrayToPem);
         console.log('sha256Go 함수 확인:', !!window.hexStringToSha256Array);
+        console.log('inspectPemDetailsGo 함수 확인:', !!window.inspectPemDetailsGo); // 새 Wasm 함수 확인
     } catch (err) {
         console.error('Failed to initialize WASM:', err);
+        // 오류 메시지를 화면에 표시
+        const errorMessage = document.createElement('div');
+        errorMessage.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; background: #ff5555; color: white; padding: 10px; text-align: center;';
+        errorMessage.textContent = `WASM 초기화 실패: ${err.message}`;
+        document.body.prepend(errorMessage);
     }
+}
+
+// HTML 문자열을 안전하게 처리하기 위한 유틸리티 함수
+function escapeHtml(unsafe) {
+    if (unsafe === null || typeof unsafe === 'undefined') return '';
+    return String(unsafe)
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -105,6 +130,75 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } else {
             sha256ResultDiv.textContent = "SHA256 WASM 함수가 아직 로드되지 않았습니다.";
+        }
+    });
+
+    // PEM 내용 검사 버튼 이벤트 리스너 (새 기능)
+    const inspectPemButton = document.getElementById('inspectPemButton');
+    const pemDetailsResultDiv = document.getElementById('pemDetailsResult');
+    // pemInput은 PEM to HEX 변환기와 공유
+
+    inspectPemButton?.addEventListener('click', () => {
+        const pemText = pemInput.value.trim();
+        if (!pemText) {
+            pemDetailsResultDiv.innerHTML = '<p style="color: red;">PEM 형식 인증서를 입력하세요.</p>';
+            return;
+        }
+
+        if (window.inspectPemDetailsGo) {
+            try {
+                const resultJson = window.inspectPemDetailsGo(pemText); // Go Wasm 함수 호출
+                const certDetails = JSON.parse(resultJson); // JSON 결과 파싱
+
+                if (certDetails.error) {
+                    pemDetailsResultDiv.innerHTML = `<p style="color: red;">PEM 분석 오류: ${escapeHtml(certDetails.error)}</p>`;
+                    return;
+                }
+
+                // result*.html 파일과 유사한 형식으로 HTML 생성
+                let htmlContent = '<h2>인증서 정보</h2><ul>';
+                const keyDisplayNames = {
+                    subject: "Subject",
+                    issuer: "Issuer",
+                    validFrom: "Valid From",
+                    validTo: "Valid To",
+                    serialNumber: "Serial Number",
+                    version: "Version",
+                    signatureAlgorithm: "Signature Algorithm",
+                    publicKeyAlgorithm: "Public Key Algorithm",
+                    publicKey: "Public Key"
+                    // extensions는 별도 처리
+                };
+
+                for (const key in certDetails) {
+                    if (!Object.hasOwnProperty.call(certDetails, key) || key === 'error' || key === 'extensions') {
+                        continue;
+                    }
+                    const displayName = keyDisplayNames[key] || key.charAt(0).toUpperCase() + key.slice(1);
+                    const value = certDetails[key];
+
+                    if (key === 'publicKey') {
+                        htmlContent += `<li><strong>${escapeHtml(displayName)}:</strong></li><pre>${escapeHtml(value)}</pre>`;
+                    } else {
+                        htmlContent += `<li><strong>${escapeHtml(displayName)}:</strong> ${escapeHtml(String(value))}</li>`;
+                    }
+                }
+                htmlContent += '</ul>';
+
+                if (certDetails.extensions && certDetails.extensions.length > 0) {
+                    htmlContent += '<h2>확장 필드 (Extensions)</h2><ul>';
+                    certDetails.extensions.forEach(ext => {
+                        htmlContent += `<li><strong>OID:</strong> ${escapeHtml(ext.oid)}<br><strong>Data:</strong> <pre>${escapeHtml(ext.data)}</pre></li>`;
+                    });
+                    htmlContent += '</ul>';
+                }
+                pemDetailsResultDiv.innerHTML = htmlContent;
+
+            } catch (err) {
+                pemDetailsResultDiv.innerHTML = `<p style="color: red;">Error processing PEM details: ${escapeHtml(err.message)}</p>`;
+            }
+        } else {
+            pemDetailsResultDiv.innerHTML = '<p style="color: red;">PEM 분석 WASM 함수(inspectPemDetailsGo)가 아직 로드되지 않았습니다.</p>';
         }
     });
 
